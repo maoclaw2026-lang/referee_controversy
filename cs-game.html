@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>CS Mini - 2D 射击游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:'Courier New',monospace}
+canvas{display:block;cursor:none}
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;z-index:10;background:rgba(0,0,0,.85)}
+#overlay h1{font-size:3.5rem;color:#f7c948;text-shadow:0 0 20px rgba(247,201,72,.5);margin-bottom:20px;letter-spacing:8px}
+#overlay .sub{font-size:1.1rem;color:#aaa;margin-bottom:30px;line-height:2.2}
+#overlay .sub b{color:#f7c948}
+#overlay button{padding:16px 60px;font-size:1.3rem;font-family:inherit;background:linear-gradient(135deg,#f7c948,#e8a020);color:#111;border:none;border-radius:8px;cursor:pointer;font-weight:bold;letter-spacing:4px}
+#overlay button:hover{transform:scale(1.05)}
+</style>
+</head>
+<body>
+<div id="overlay">
+<h1 id="oTitle">CS MINI</h1>
+<div class="sub" id="oInfo">
+<b>WASD</b> 移动 | <b>鼠标</b> 瞄准射击 | <b>R</b> 换弹<br>
+<b>1/2/3</b> 切换武器 | <b>空格</b> 冲刺 | <b>E</b> 拾取补给
+</div>
+<button id="btn">开 始 游 戏</button>
+</div>
+<canvas id="c"></canvas>
+<script>
+var C=document.getElementById('c'),X=C.getContext('2d');
+var overlay=document.getElementById('overlay'),btn=document.getElementById('btn');
+var oTitle=document.getElementById('oTitle'),oInfo=document.getElementById('oInfo');
+var W=1200,H=800;C.width=W;C.height=H;
+
+var T=40,MW=32,MH=20,grid=[];
+function buildMap(){
+grid=[];for(var y=0;y<MH;y++){grid[y]=[];for(var x=0;x<MW;x++)grid[y][x]=(x===0||y===0||x===MW-1||y===MH-1)?1:0;}
+var walls=[
+{x:3,y:3,w:6,h:1},{x:3,y:3,w:1,h:3},{x:10,y:3,w:1,h:4},{x:10,y:3,w:4,h:1},
+{x:18,y:2,w:8,h:1},{x:25,y:2,w:1,h:4},
+{x:3,y:8,w:1,h:4},{x:3,y:11,w:4,h:1},
+{x:10,y:8,w:3,h:1},{x:10,y:8,w:1,h:2},
+{x:18,y:7,w:1,h:5},{x:18,y:11,w:4,h:1},
+{x:26,y:7,w:1,h:6},{x:26,y:12,w:4,h:1},
+{x:6,y:14,w:4,h:1},{x:6,y:14,w:1,h:3},
+{x:12,y:14,w:1,h:3},{x:12,y:16,w:5,h:1},
+{x:20,y:14,w:3,h:1},{x:22,y:14,w:1,h:3},
+{x:28,y:15,w:1,h:3},{x:28,y:17,w:3,h:1},
+{x:14,y:4,w:1,h:3},{x:14,y:6,w:3,h:1},
+{x:22,y:3,w:3,h:1},{x:24,y:3,w:1,h:2}
+];
+for(var i=0;i<walls.length;i++){var w=walls[i];for(var dy=0;dy<w.h;dy++)for(var dx=0;dx<w.w;dx++){var ny=w.y+dy,nx=w.x+dx;if(ny>0&&ny<MH-1&&nx>0&&nx<MW-1)grid[ny][nx]=1;}}
+var crates=[[5,5],[13,4],[20,5],[28,4],[8,9],[16,10],[24,9],[5,15],[14,17],[22,15],[29,17]];
+for(var i=0;i<crates.length;i++){var c=crates[i];if(c[1]>0&&c[1]<MH-1&&c[0]>0&&c[0]<MW-1)grid[c[1]][c[0]]=2;}
+var pickups=[[8,1,3],[20,13,3],[2,17,4],[29,1,3],[13,13,4],[29,17,3]];
+for(var i=0;i<pickups.length;i++){var p=pickups[i];if(p[1]>0&&p[1]<MH-1&&p[0]>0&&p[0]<MW-1)grid[p[1]][p[0]]=p[2];}
+}
+function isWall(px,py){var tx=Math.floor(px/T),ty=Math.floor(py/T);if(tx<0||tx>=MW||ty<0||ty>=MH)return true;return grid[ty][tx]>=1&&grid[ty][tx]<=2;}
+function getPickup(px,py){var tx=Math.floor(px/T),ty=Math.floor(py/T);if(tx<0||tx>=MW||ty<0||ty>=MH)return null;var t=grid[ty][tx];return t>=3?{type:t,tx:tx,ty:ty}:null;}
+
+var WDEFS=[
+{name:'USP',ammo:9999,max:9999,dmg:20,rate:250,spread:.05,auto:false,reload:0,bspd:16,bsz:2,col:'#f7c948',inf:true},
+{name:'AK47',ammo:30,max:30,dmg:22,rate:90,spread:.07,auto:true,reload:2200,bspd:18,bsz:3,col:'#ff6b35',inf:false},
+{name:'AWP',ammo:5,max:5,dmg:90,rate:1400,spread:.005,auto:false,reload:3200,bspd:28,bsz:4,col:'#00ffaa',inf:false}
+];
+
+var P,enemies=[],bullets=[],parts=[],casings=[],killfeed=[];
+var wave=1,kills=0,waveTimer=0,nextWaveDelay=4000;
+var running=false,paused=false,reloading=false,reloadStart=0,lastShot=0;
+var cam={x:0,y:0},shake={x:0,y:0,i:0};
+var damageFlash=0,muzzleFlash=0,hitMarker=0,weaponBob=0,weaponBobAmt=0;
+var keys={},mouse={x:W/2,y:H/2,down:false,click:false};
+
+function createPlayer(){
+return{x:2*T+T/2,y:2*T+T/2,w:20,h:20,spd:3,hp:100,mhp:100,arm:50,marm:100,wi:0,
+guns:WDEFS.map(function(w){return{name:w.name,ammo:w.ammo,max:w.max,dmg:w.dmg,rate:w.rate,spread:w.spread,auto:w.auto,reload:w.reload,bspd:w.bspd,bsz:w.bsz,col:w.col,inf:w.inf};}),
+alive:true,dashCD:0};
+}
+
+function spawnWave(){
+var n=4+wave*2,spots=[];
+for(var y=1;y<MH-1;y++)for(var x=1;x<MW-1;x++)
+if(grid[y][x]===0&&Math.hypot(x*T-P.x,y*T-P.y)>350)spots.push({x:x,y:y});
+for(var i=spots.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=spots[i];spots[i]=spots[j];spots[j]=tmp;}
+for(var i=0;i<Math.min(n,spots.length);i++){
+var s=spots[i];
+enemies.push({x:s.x*T+T/2,y:s.y*T+T/2,w:20,h:20,spd:1.2+Math.random()*.6+wave*.1,
+hp:50+wave*8,mhp:50+wave*8,alive:true,state:'patrol',ptx:0,pty:0,
+lastFire:0,rate:700+Math.random()*500,dmg:7+wave*1.5,
+det:280+wave*15,srange:220,ang:Math.random()*Math.PI*2});
+}
+}
+
+function moveEnt(e,dx,dy){
+var hw=e.w/2-2,hh=e.h/2-2;
+var nx=e.x+dx,ny=e.y+dy;
+if(!isWall(nx-hw,e.y-hh)&&!isWall(nx+hw,e.y-hh)&&!isWall(nx-hw,e.y+hh)&&!isWall(nx+hw,e.y+hh))e.x=nx;
+if(!isWall(e.x-hw,ny-hh)&&!isWall(e.x+hw,ny-hh)&&!isWall(e.x-hw,ny+hh)&&!isWall(e.x+hw,ny+hh))e.y=ny;
+}
+
+function los(x1,y1,x2,y2){
+var d=Math.hypot(x2-x1,y2-y1),steps=Math.ceil(d/8);
+for(var i=0;i<=steps;i++){var t=i/steps;if(isWall(x1+(x2-x1)*t,y1+(y2-y1)*t))return false;}
+return true;
+}
+
+function burst(x,y,col,n,sp){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=Math.random()*sp;parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.3+Math.random()*.4,ml:.3+Math.random()*.4,col:col,sz:1+Math.random()*3});}}
+function casing(x,y,ang){var pa=ang+Math.PI/2;casings.push({x:x,y:y,vx:Math.cos(pa)*(2+Math.random()*2),vy:Math.sin(pa)*(2+Math.random()*2),life:2,rot:Math.random()*Math.PI*2});}
+function feed(t){killfeed.unshift({text:t,time:3});if(killfeed.length>5)killfeed.pop();}
+
+function update(dt){
+if(!running||paused||!P.alive)return;if(dt>.1)dt=.1;
+var dx=0,dy=0;
+if(keys['w'])dy-=1;if(keys['s'])dy+=1;if(keys['a'])dx-=1;if(keys['d'])dx+=1;
+if(dx||dy){
+var l=Math.hypot(dx,dy);dx/=l;dy/=l;var spd=P.spd;
+if(keys[' ']&&P.dashCD<=0){spd=9;P.dashCD=600;burst(P.x,P.y,'#00aaff',8,3);}
+moveEnt(P,dx*spd,dy*spd);weaponBob+=dt*10;weaponBobAmt=Math.min(1,weaponBobAmt+dt*5);
+}else{weaponBobAmt=Math.max(0,weaponBobAmt-dt*5);}
+if(P.dashCD>0)P.dashCD-=dt*1000;
+
+var gun=P.guns[P.wi];
+var canFire=gun.auto?mouse.down:mouse.click;
+if(canFire&&!reloading&&gun.ammo>0){
+var now=Date.now();
+if(now-lastShot>gun.rate){
+var ang=Math.atan2(mouse.y-H/2,mouse.x-W/2);
+var spr=(Math.random()-.5)*gun.spread;
+bullets.push({x:P.x,y:P.y,ang:ang+spr,spd:gun.bspd,dmg:gun.dmg,sz:gun.bsz,col:gun.col,ip:true,life:70});
+if(!gun.inf)gun.ammo--;lastShot=now;
+casing(P.x,P.y,ang);burst(P.x+Math.cos(ang)*14,P.y+Math.sin(ang)*14,'#ffff44',3,2);
+shake.i=gun.name==='AWP'?6:gun.name==='AK47'?3:1;
+}}
+mouse.click=false;
+
+if((keys['r']||keys['R'])&&!reloading&&gun.ammo<gun.max&&!gun.inf){reloading=true;reloadStart=Date.now();}
+if(reloading&&Date.now()-reloadStart>=gun.reload){gun.ammo=gun.max;reloading=false;}
+
+var pk=getPickup(P.x,P.y);
+if(pk){
+if(pk.type===3){P.guns[1].ammo=Math.min(P.guns[1].max,P.guns[1].ammo+10);P.guns[2].ammo=Math.min(P.guns[2].max,P.guns[2].ammo+2);}
+else if(pk.type===4){P.arm=Math.min(P.marm,P.arm+30);}
+grid[pk.ty][pk.tx]=0;burst(pk.tx*T+T/2,pk.ty*T+T/2,pk.type===3?'#00ff88':'#4488ff',10,3);
+feed(pk.type===3?'拾取了弹药!':'拾取了护甲!');
+}
+
+cam.x=P.x-W/2;cam.y=P.y-H/2;
+if(shake.i>0){shake.x=(Math.random()-.5)*shake.i*2;shake.y=(Math.random()-.5)*shake.i*2;shake.i*=.85;if(shake.i<.1)shake.i=0;}
+if(damageFlash>0)damageFlash-=dt*3;if(muzzleFlash>0)muzzleFlash-=dt*5;if(hitMarker>0)hitMarker-=dt*4;
+
+for(var i=bullets.length-1;i>=0;i--){var b=bullets[i];
+b.x+=Math.cos(b.ang)*b.spd;b.y+=Math.sin(b.ang)*b.spd;b.life--;
+if(isWall(b.x,b.y)||b.life<=0){if(isWall(b.x,b.y))burst(b.x,b.y,'#aaa',4,2);bullets.splice(i,1);continue;}
+if(!b.ip&&P.alive&&Math.hypot(b.x-P.x,b.y-P.y)<P.w/2){
+var d=b.dmg;if(P.arm>0){var ab=Math.min(P.arm,d*.6);P.arm-=ab;d-=ab;}
+P.hp-=d;damageFlash=.5;shake.i=4;burst(P.x,P.y,'#f00',6,3);bullets.splice(i,1);
+if(P.hp<=0){P.hp=0;P.alive=false;showDeath();}continue;}
+if(b.ip){for(var j=0;j<enemies.length;j++){var e=enemies[j];if(!e.alive)continue;
+if(Math.hypot(b.x-e.x,b.y-e.y)<e.w/2+b.sz){
+e.hp-=b.dmg;burst(e.x,e.y,'#f00',8,4);hitMarker=.3;bullets.splice(i,1);
+if(e.hp<=0){e.alive=false;kills++;feed('[你] 击杀 +100');burst(e.x,e.y,'#f44',15,5);}break;}}}}
+
+for(var i=0;i<enemies.length;i++){var e=enemies[i];if(!e.alive)continue;
+var dp=Math.hypot(e.x-P.x,e.y-P.y);
+var see=dp<e.det&&los(e.x,e.y,P.x,P.y);
+if(see){e.state=dp<e.srange?'attack':'chase';e.ang=Math.atan2(P.y-e.y,P.x-e.x);}
+else{e.state='patrol';if(Math.random()<.008){e.ptx=(1+Math.random()*(MW-2))*T;e.pty=(1+Math.random()*(MH-2))*T;}
+e.ang=Math.atan2(e.pty-e.y,e.ptx-e.x);}
+if(e.state!=='attack')moveEnt(e,Math.cos(e.ang)*e.spd,Math.sin(e.ang)*e.spd);
+else if(dp>80)moveEnt(e,Math.cos(e.ang)*e.spd*.4,Math.sin(e.ang)*e.spd*.4);
+if(see&&e.state==='attack'&&Date.now()-e.lastFire>e.rate){
+bullets.push({x:e.x,y:e.y,ang:e.ang+(Math.random()-.5)*.15,spd:10,dmg:e.dmg,sz:3,col:'#f66',ip:false,life:60});e.lastFire=Date.now();}}
+
+for(var i=parts.length-1;i>=0;i--){var p=parts[i];p.x+=p.vx;p.y+=p.vy;p.vx*=.95;p.vy*=.95;p.life-=dt;if(p.life<=0)parts.splice(i,1);}
+for(var i=casings.length-1;i>=0;i--){var s=casings[i];s.x+=s.vx;s.y+=s.vy;s.vx*=.9;s.vy*=.9;s.rot+=.15;s.life-=dt;if(s.life<=0)casings.splice(i,1);}
+for(var i=killfeed.length-1;i>=0;i--){killfeed[i].time-=dt;if(killfeed[i].time<=0)killfeed.splice(i,1);}
+
+var alive=0;for(var i=0;i<enemies.length;i++)if(enemies[i].alive)alive++;
+if(alive===0){waveTimer+=dt*1000;if(waveTimer>=nextWaveDelay){wave++;waveTimer=0;spawnWave();feed('--- 第 '+wave+' 波 ---');}}
+}
+
+function render(){
+X.fillStyle='#1a1a2e';X.fillRect(0,0,W,H);
+X.save();X.translate(-cam.x+shake.x,-cam.y+shake.y);
+var sx=Math.max(0,Math.floor(cam.x/T)),ex=Math.min(MW,Math.ceil((cam.x+W)/T)+1);
+var sy=Math.max(0,Math.floor(cam.y/T)),ey=Math.min(MH,Math.ceil((cam.y+H)/T)+1);
+for(var y=sy;y<ey;y++)for(var x=sx;x<ex;x++){
+var px=x*T,py=y*T,t=grid[y][x];
+if(t===1){X.fillStyle='#3a3a5c';X.fillRect(px,py,T,T);X.strokeStyle='#4a4a6c';X.strokeRect(px,py,T,T);X.fillStyle='#353555';X.fillRect(px+2,py+2,T/2-3,T/2-3);X.fillRect(px+T/2+1,py+T/2+1,T/2-3,T/2-3);}
+else if(t===2){X.fillStyle='#8B6914';X.fillRect(px+2,py+2,T-4,T-4);X.strokeStyle='#6B4F10';X.lineWidth=2;X.strokeRect(px+2,py+2,T-4,T-4);X.lineWidth=1;}
+else if(t===3){X.fillStyle='#0c6';X.beginPath();X.arc(px+T/2,py+T/2,8,0,Math.PI*2);X.fill();X.fillStyle='#fff';X.font='10px monospace';X.textAlign='center';X.fillText('A',px+T/2,py+T/2+4);}
+else if(t===4){X.fillStyle='#48f';X.beginPath();X.arc(px+T/2,py+T/2,8,0,Math.PI*2);X.fill();X.fillStyle='#fff';X.font='10px monospace';X.textAlign='center';X.fillText('S',px+T/2,py+T/2+4);}
+else{X.fillStyle='#1e1e35';if((x+y)%3===0)X.fillRect(px+T/2,py+T/2,2,2);}
+}
+for(var i=0;i<casings.length;i++){var s=casings[i];X.save();X.translate(s.x,s.y);X.rotate(s.rot);X.fillStyle='#d4a030';X.fillRect(-3,-1,6,2);X.restore();}
+
+for(var i=0;i<enemies.length;i++){var e=enemies[i];if(!e.alive)continue;
+X.fillStyle='#f44';X.beginPath();X.arc(e.x,e.y,e.w/2,0,Math.PI*2);X.fill();
+X.strokeStyle='#fff';X.lineWidth=2;X.beginPath();X.moveTo(e.x,e.y);X.lineTo(e.x+Math.cos(e.ang)*15,e.y+Math.sin(e.ang)*15);X.stroke();X.lineWidth=1;
+var bw=28,hr=e.hp/e.mhp;X.fillStyle='#333';X.fillRect(e.x-bw/2,e.y-e.h/2-10,bw,4);X.fillStyle=hr>.5?'#4f4':hr>.25?'#fa0':'#f44';X.fillRect(e.x-bw/2,e.y-e.h/2-10,bw*hr,4);}
+
+if(P.alive){X.fillStyle='#48f';X.beginPath();X.arc(P.x,P.y,P.w/2,0,Math.PI*2);X.fill();X.strokeStyle='#6af';X.lineWidth=2;X.stroke();X.lineWidth=1;
+var ga=Math.atan2(mouse.y-H/2,mouse.x-W/2);var gun=P.guns[P.wi];X.strokeStyle=gun.col;X.lineWidth=gun.name==='AWP'?4:gun.name==='AK47'?3:2;
+X.beginPath();X.moveTo(P.x,P.y);X.lineTo(P.x+Math.cos(ga)*18,P.y+Math.sin(ga)*18);X.stroke();X.lineWidth=1;}
+
+for(var i=0;i<bullets.length;i++){var b=bullets[i];X.fillStyle=b.col;X.beginPath();X.arc(b.x,b.y,b.sz,0,Math.PI*2);X.fill();
+X.strokeStyle=b.col;X.globalAlpha=.4;X.lineWidth=b.sz*.6;X.beginPath();X.moveTo(b.x,b.y);X.lineTo(b.x-Math.cos(b.ang)*8,b.y-Math.sin(b.ang)*8);X.stroke();X.globalAlpha=1;X.lineWidth=1;}
+for(var i=0;i<parts.length;i++){var p=parts[i];X.globalAlpha=p.life/p.ml;X.fillStyle=p.col;X.beginPath();X.arc(p.x,p.y,p.sz*(p.life/p.ml),0,Math.PI*2);X.fill();}
+X.globalAlpha=1;X.restore();
+
+drawBar(20,H-60,180,18,P.hp/P.mhp,'#f44','#a22','HP');
+drawBar(20,H-38,180,18,P.arm/P.marm,'#48f','#248','ARMOR');
+var gun=P.guns[P.wi];X.fillStyle='rgba(0,0,0,.7)';X.fillRect(W-200,H-65,180,46);
+X.strokeStyle=gun.col;X.lineWidth=1;X.strokeRect(W-200,H-65,180,46);
+X.fillStyle='#fff';X.font='bold 15px monospace';X.textAlign='right';X.fillText(gun.name,W-30,H-42);
+X.font='13px monospace';X.fillStyle=reloading?'#fa0':'#fff';X.fillText(gun.inf?'∞':gun.ammo+' / '+gun.max,W-30,H-26);
+X.fillStyle='rgba(0,0,0,.7)';X.fillRect(W/2-75,8,150,38);
+X.fillStyle='#f7c948';X.font='bold 13px monospace';X.textAlign='center';X.fillText('WAVE '+wave,W/2,26);
+X.fillStyle='#aaa';X.font='11px monospace';X.fillText('Kills: '+kills,W/2,40);
+var alive=0;for(var i=0;i<enemies.length;i++)if(enemies[i].alive)alive++;
+if(alive===0){X.fillStyle='#4f4';X.font='bold 16px monospace';X.fillText('Next wave in '+Math.ceil((nextWaveDelay-waveTimer)/1000)+'s',W/2,65);}
+X.textAlign='right';for(var i=0;i<killfeed.length;i++){X.globalAlpha=Math.min(1,killfeed[i].time);X.fillStyle=killfeed[i].text.indexOf('击杀')>=0?'#fc4':'#fff';X.font='11px monospace';X.fillText(killfeed[i].text,W-18,78+i*18);}
+X.globalAlpha=1;
+var cx=mouse.x,cy=mouse.y;X.strokeStyle=hitMarker>0?'#f44':'#fff';X.lineWidth=hitMarker>0?2.5:1.5;
+X.beginPath();X.moveTo(cx-16,cy);X.lineTo(cx-5,cy);X.moveTo(cx+5,cy);X.lineTo(cx+16,cy);X.moveTo(cx,cy-16);X.lineTo(cx,cy-5);X.moveTo(cx,cy+5);X.lineTo(cx,cy+16);X.stroke();
+X.fillStyle=hitMarker>0?'#f44':'#f00';X.beginPath();X.arc(cx,cy,1.5,0,Math.PI*2);X.fill();
+X.fillStyle='rgba(0,0,0,.7)';X.fillRect(W/2-115,H-32,230,22);
+for(var i=0;i<3;i++){var wx=W/2-105+i*75;X.fillStyle=i===P.wi?gun.col:'#555';X.fillRect(wx,H-30,70,18);X.fillStyle=i===P.wi?'#000':'#aaa';X.font='10px monospace';X.textAlign='center';X.fillText((i+1)+':'+P.guns[i].name,wx+35,H-18);}
+var pk=getPickup(P.x,P.y);if(pk){X.fillStyle='#fff';X.font='13px monospace';X.textAlign='center';X.fillText('[E] 拾取'+(pk.type===3?' 弹药':' 护甲'),W/2,H-80);}
+var mw=150,mh=95,mx=W-mw-12,my=12;X.fillStyle='rgba(0,0,0,.8)';X.fillRect(mx-2,my-2,mw+4,mh+4);
+var scx=mw/(MW*T),scy=mh/(MH*T);
+for(var y=0;y<MH;y++)for(var x=0;x<MW;x++){X.fillStyle=grid[y][x]===1?'#3a3a5c':grid[y][x]===2?'#8B6914':'#1a1a2e';X.fillRect(mx+x*T*scx,my+y*T*scy,Math.max(1,T*scx),Math.max(1,T*scy));}
+X.fillStyle='#48f';X.beginPath();X.arc(mx+P.x*scx,my+P.y*scy,3,0,Math.PI*2);X.fill();
+for(var i=0;i<enemies.length;i++){var e=enemies[i];if(!e.alive)continue;X.fillStyle='#f44';X.beginPath();X.arc(mx+e.x*scx,my+e.y*scy,2,0,Math.PI*2);X.fill();}
+}
+
+function drawBar(x,y,w,h,r,fg,bg,lb){X.fillStyle='rgba(0,0,0,.6)';X.fillRect(x-2,y-2,w+4,h+4);X.fillStyle=bg;X.fillRect(x,y,w,h);X.fillStyle=fg;X.fillRect(x,y,w*Math.max(0,r),h);X.fillStyle='#fff';X.font='bold 10px monospace';X.textAlign='center';X.fillText(lb+': '+Math.round(r*100)+'%',x+w/2,y+h-3);}
+
+document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if(!P)return;
+if(e.key==='1'||e.key==='2'||e.key==='3'){var idx=parseInt(e.key)-1;if(idx>=0&&idx<P.guns.length){P.wi=idx;reloading=false;}}
+if(e.key==='Escape')paused=!paused;});
+document.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;});
+C.addEventListener('mousemove',function(e){var r=C.getBoundingClientRect();mouse.x=(e.clientX-r.left)*(W/r.width);mouse.y=(e.clientY-r.top)*(H/r.height);});
+C.addEventListener('mousedown',function(e){if(e.button===0){mouse.down=true;mouse.click=true;}});
+C.addEventListener('mouseup',function(e){if(e.button===0)mouse.down=false;});
+C.addEventListener('contextmenu',function(e){e.preventDefault();});
+
+var lt=0;function loop(ts){var dt=Math.min((ts-lt)/1000,.05);lt=ts;if(running){update(dt);render();}requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+
+function showDeath(){overlay.style.display='flex';oTitle.textContent='你被击倒了';oTitle.style.color='#f44';oInfo.innerHTML='波次: '+wave+' | 击杀: '+kills;btn.textContent='再来一局';}
+btn.addEventListener('click',function(){
+P=createPlayer();enemies=[];bullets=[];parts=[];casings=[];killfeed=[];
+wave=1;kills=0;waveTimer=0;reloading=false;lastShot=0;damageFlash=0;muzzleFlash=0;hitMarker=0;
+weaponBob=0;weaponBobAmt=0;shake={x:0,y:0,i:0};
+buildMap();spawnWave();feed('--- 第 1 波 ---');
+running=true;paused=false;overlay.style.display='none';
+});
+</script>
+</body>
+</html>
