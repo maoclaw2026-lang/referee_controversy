@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>糖尿病养生全指南</title>
+    <style>
+        :root {
+            --primary: #2e7d32;
+            --primary-light: #4caf50;
+            --primary-dark: #1b5e20;
+            --accent: #ff6f00;
+            --bg: #f5f7f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-light: #666666;
+            --border: #e0e0e0;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        /* Header */
+        .hero {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
+            color: white;
+            padding: 60px 20px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            animation: pulse 6s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .hero h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .hero p {
+            font-size: 1.15em;
+            opacity: 0.9;
+            position: relative;
+        }
+
+        .hero .icon {
+            font-size: 3em;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        /* Navigation */
+        .nav-bar {
+            background: white;
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            overflow-x: auto;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .nav-bar a {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            padding: 8px 16px;
+            margin: 4px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-bar a:hover, .nav-bar a.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px 60px;
+        }
+
+        .section {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 36px 32px;
+            margin-bottom: 28px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+
+        .section h2 {
+            color: var(--primary-dark);
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h3 {
+            color: var(--primary);
+            font-size: 1.2em;
+            margin: 24px 0 12px;
+            padding-left: 16px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .section h4 {
+            color: var(--text);
+            font-size: 1.05em;
+            margin: 18px 0 8px;
+        }
+
+        .section p {
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .section ul, .section ol {
+            margin: 12px 0 16px 24px;
+        }
+
+        .section li {
+            margin-bottom: 8px;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: var(--primary);
+            color: white;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:nth-child(even) {
+            background: #f8faf8;
+        }
+
+        tr:hover {
+            background: #e8f5e9;
+        }
+
+        /* Cards Grid */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #f8faf8 0%, #e8f5e9 100%);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #c8e6c9;
+        }
+
+        .info-card h4 {
+            color: var(--primary-dark);
+            margin: 0 0 8px;
+            font-size: 1.05em;
+        }
+
+        .info-card p {
+            margin: 0;
+            font-size: 0.95em;
+            color: var(--text-light);
+        }
+
+        /* Warning Box */
+        .warning-box {
+            background: #fff3e0;
+            border: 1px solid #ffcc02;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+
+        .warning-box h4 {
+            color: #e65100;
+            margin: 0 0 12px;
+        }
+
+        .warning-box ol {
+            margin: 0 0 0 20px;
+        }
+
+        .warning-box li {
+            margin-bottom: 8px;
+            color: #bf360c;
+        }
+
+        /* Tip Box */
+        .tip-box {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 16px 0;
+        }
+
+        .tip-box p {
+            margin: 0;
+            color: #1565c0;
+        }
+
+        /* Schedule Table */
+        .schedule-table td:first-child {
+            font-weight: 600;
+            color: var(--primary-dark);
+            white-space: nowrap;
+            width: 100px;
+        }
+
+        .schedule-table td:last-child {
+            color: var(--text-light);
+        }
+
+        /* Motto */
+        .motto {
+            text-align: center;
+            padding: 36px 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: var(--radius);
+            margin-top: 20px;
+            border-left: none;
+        }
+
+        .motto h2 {
+            color: white;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            justify-content: center;
+        }
+
+        .motto p {
+            font-size: 1.6em;
+            font-weight: 700;
+            letter-spacing: 4px;
+            margin: 20px 0;
+            color: #fff;
+        }
+
+        .motto .subtitle {
+            font-size: 1em;
+            font-weight: 400;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            background: #e8f5e9;
+            color: var(--primary);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 6px;
+            font-weight: 500;
+        }
+
+        .tag.accent {
+            background: #fff3e0;
+            color: var(--accent);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 1.8em; }
+            .section { padding: 24px 20px; }
+            .card-grid { grid-template-columns: 1fr; }
+            .nav-bar a { padding: 6px 12px; font-size: 0.85em; }
+            .motto p { font-size: 1.3em; letter-spacing: 2px; }
+        }
+
+        /* Print styles */
+        @media print {
+            .nav-bar { display: none; }
+            .hero { padding: 30px 20px; }
+            .section { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hero">
+        <div class="icon">&#x1F489;</div>
+        <h1>糖尿病养生全指南</h1>
+        <p>科学管理血糖，拥抱健康生活</p>
+    </div>
+
+    <div class="nav-bar">
+        <a href="#sec1">&#x1F4CB; 认识糖尿病</a>
+        <a href="#sec2">&#x1F37D;&#xFE0F; 饮食养生</a>
+        <a href="#sec3">&#x1F3C3; 运动养生</a>
+        <a href="#sec4">&#x1F4CA; 日常监测</a>
+        <a href="#sec5">&#x1F6E1;&#xFE0F; 并发症预防</a>
+        <a href="#sec6">&#x1F33F; 中医养生</a>
+        <a href="#sec7">&#x26A0;&#xFE0F; 常见误区</a>
+        <a href="#sec8">&#x1F4C5; 每日作息</a>
+    </div>
+
+    <div class="container">
+
+        <div class="section" id="sec1">
+            <h2>&#x1F4CB; 一、认识糖尿病</h2>
+            <p>糖尿病是一种慢性代谢疾病，主要分为三种类型：</p>
+            <div class="card-grid">
+                <div class="info-card">
+                    <h4>1型糖尿病</h4>
+                    <p>胰岛素依赖型，多发于青少年，需要终身注射胰岛素。</p>
+                </div>
+                <div class="info-card">
+                    <h4>2型糖尿病</h4>
+                    <p>最常见（占90%以上），与生活方式密切相关，可通过饮食和运动控制。</p>
+                </div>
+                <div class="info-card">
+                    <h4>妊娠期糖尿病</h4>
+                    <p>孕期出现，产后可能恢复，但未来患病风险增加。</p>
+                </div>
+            </div>
+            <div class="tip-box">
+                <p>&#x1F4A1; <strong>核心认知：</strong>糖尿病不可怕，可怕的是并发症。科学管理血糖，完全可以像健康人一样生活。</p>
+            </div>
+        </div>
+
+        <div class="section" id="sec2">
+            <h2>&#x1F37D;&#xFE0F; 二、饮食养生：吃对血糖不升</h2>
+
+            <h3>1. 饮食核心原则 &mdash;&mdash; &ldquo;三低一高&rdquo;</h3>
+            <ul>
+                <li><span class="tag">低糖</span>避免白砂糖、蜂蜜、果汁、甜点</li>
+                <li><span class="tag">低脂</span>少用油炸，选择蒸、煮、炖、凉拌</li>
+                <li><span class="tag">低盐</span>每日食盐不超过5克</li>
+                <li><span class="tag accent">高纤维</span>多吃粗粮、蔬菜、豆类</li>
+            </ul>
+
+            <h3>2. 主食选择</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tr><th>推荐 &#x2705;</th><th>少吃 &#x274C;</th></tr>
+                    <tr><td>糙米、燕麦、荞麦</td><td>白米饭、白面条</td></tr>
+                    <tr><td>全麦面包</td><td>白馒头、白面包</td></tr>
+                    <tr><td>红薯、玉米</td><td>糯米制品</td></tr>
+                </table>
+            </div>
+            <div class="tip-box">
+                <p>&#x1F4A1; <strong>技巧：</strong>主食占每餐的1/4，粗细搭配，先菜后肉再主食，血糖更平稳。</p>
+            </div>
+
+            <h3>3. 蔬菜多多益善</h3>
+            <ul>
+                <li>每日蔬菜500克以上，深色蔬菜占一半</li>
+                <li>苦瓜、洋葱、芹菜、冬瓜、菠菜是&ldquo;控糖好帮手&rdquo;</li>
+                <li>土豆、山药、莲藕含淀粉，应减少主食量</li>
+            </ul>
+
+            <h3>4. 水果怎么选</h3>
+            <p>血糖控制达标后（空腹&lt;7.0，餐后&lt;10.0），可适量吃水果：</p>
+            <ul>
+                <li><span class="tag">优选</span>苹果、柚子、猕猴桃、草莓、樱桃（低GI）</li>
+                <li><span class="tag accent">时间</span>两餐之间，不要饭后立刻吃</li>
+                <li><span class="tag accent">分量</span>每天不超过200克</li>
+            </ul>
+
+            <h3>5. 蛋白质不能少</h3>
+            <ul>
+                <li>每天一个鸡蛋、一杯牛奶（无糖）</li>
+                <li>鱼肉优于猪肉，去皮禽肉优于红肉</li>
+                <li>豆制品是优质植物蛋白</li>
+            </ul>
+        </div>
+
+        <div class="section" id="sec3">
+            <h2>&#x1F3C3; 三、运动养生：动起来，血糖降</h2>
+
+            <h3>1. 运动的好处</h3>
+            <ul>
+                <li>提高胰岛素敏感性，降低血糖</li>
+                <li>控制体重，减少腹部脂肪</li>
+                <li>改善心血管健康</li>
+                <li>缓解压力，改善睡眠</li>
+            </ul>
+
+            <h3>2. 推荐运动方式</h3>
+            <div class="card-grid">
+                <div class="info-card">
+                    <h4>&#x1F3CA; 有氧运动</h4>
+                    <p>快走、慢跑、游泳、骑车、太极拳</p>
+                </div>
+                <div class="info-card">
+                    <h4>&#x1F4AA; 力量训练</h4>
+                    <p>哑铃、弹力带、自重训练（每周2-3次）</p>
+                </div>
+                <div class="info-card">
+                    <h4>&#x1F9D8; 柔韧性运动</h4>
+                    <p>瑜伽、拉伸，提高身体柔韧性</p>
+                </div>
+            </div>
+
+            <h3>3. 运动处方</h3>
+            <ul>
+                <li><strong>频率：</strong>每周至少150分钟中等强度运动</li>
+                <li><strong>时间：</strong>餐后30分钟开始运动，避免空腹运动</li>
+                <li><strong>强度：</strong>微微出汗、能说话但不能唱歌的程度</li>
+                <li><strong>注意：</strong>运动前测血糖，&lt;5.6mmol/L先吃点东西再运动</li>
+            </ul>
+        </div>
+
+        <div class="section" id="sec4">
+            <h2>&#x1F4CA; 四、日常监测：数据说话</h2>
+
+            <h3>1. 血糖监测频率</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tr><th>病情阶段</th><th>监测频率</th></tr>
+                    <tr><td>调整药物期</td><td>每日4-7次</td></tr>
+                    <tr><td>病情稳定期</td><td>每周2-3天</td></tr>
+                    <tr><td>使用胰岛素</td><td>每日至少3次</td></tr>
+                </table>
+            </div>
+
+            <h3>2. 控制目标</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tr><th>指标</th><th>目标值</th></tr>
+                    <tr><td>空腹血糖</td><td>4.4-7.0 mmol/L</td></tr>
+                    <tr><td>餐后2小时血糖</td><td>&lt;10.0 mmol/L</td></tr>
+                    <tr><td>糖化血红蛋白（HbA1c）</td><td>&lt;7.0%</td></tr>
+                    <tr><td>血压</td><td>&lt;130/80 mmHg</td></tr>
+                    <tr><td>血脂（LDL）</td><td>&lt;2.6 mmol/L</td></tr>
+                </table>
+            </div>
+
+            <div class="tip-box">
+                <p>&#x1F4A1; <strong>记录习惯：</strong>准备一个血糖记录本，记录日期、时间、数值、饮食和运动，复诊时带给医生看。</p>
+            </div>
+        </div>
+
+        <div class="section" id="sec5">
+            <h2>&#x1F6E1;&#xFE0F; 五、并发症预防：防患于未然</h2>
+
+            <h3>1. 眼部保护</h3>
+            <ul>
+                <li>每年至少一次眼底检查</li>
+                <li>控制血糖、血压、血脂&ldquo;三高&rdquo;</li>
+                <li>出现视力模糊及时就医</li>
+            </ul>
+
+            <h3>2. 足部护理（糖友必修课）</h3>
+            <ul>
+                <li>每天洗脚，水温&lt;37度（用手腕试温）</li>
+                <li>擦干趾缝，涂保湿霜（避开趾缝）</li>
+                <li>穿宽松透气的鞋袜，不赤脚走路</li>
+                <li>每天检查双脚，有伤口立即处理</li>
+            </ul>
+
+            <h3>3. 肾脏保护</h3>
+            <ul>
+                <li>每年查尿微量白蛋白</li>
+                <li>低盐饮食，不滥用药物</li>
+                <li>控制血压至关重要</li>
+            </ul>
+
+            <h3>4. 心血管保护</h3>
+            <ul>
+                <li>戒烟限酒</li>
+                <li>定期查血脂、心电图</li>
+                <li>出现胸闷、气短及时就医</li>
+            </ul>
+        </div>
+
+        <div class="section" id="sec6">
+            <h2>&#x1F33F; 六、中医养生：辅助调理</h2>
+
+            <h3>1. 食疗方</h3>
+            <div class="card-grid">
+                <div class="info-card">
+                    <h4>&#x1F375; 苦瓜茶</h4>
+                    <p>苦瓜切片泡水，清热降糖</p>
+                </div>
+                <div class="info-card">
+                    <h4>&#x1F35A; 山药枸杞粥</h4>
+                    <p>健脾益气（注意减少主食）</p>
+                </div>
+                <div class="info-card">
+                    <h4>&#x1F963; 葛根粉</h4>
+                    <p>生津止渴，辅助降糖</p>
+                </div>
+            </div>
+
+            <h3>2. 穴位按摩</h3>
+            <ul>
+                <li><strong>足三里</strong>（膝眼下三寸）：健脾和胃</li>
+                <li><strong>三阴交</strong>（内踝上三寸）：调理肝肾</li>
+                <li><strong>太溪穴</strong>（内踝与跟腱之间）：滋阴补肾</li>
+            </ul>
+
+            <h3>3. 情志调养</h3>
+            <ul>
+                <li>保持乐观心态，避免焦虑</li>
+                <li>冥想、深呼吸、听音乐</li>
+                <li>参加糖友互助小组，分享经验</li>
+            </ul>
+        </div>
+
+        <div class="section" id="sec7">
+            <h2>&#x26A0;&#xFE0F; 七、特别提醒：这些误区要避开</h2>
+            <div class="warning-box">
+                <h4>&#x2757; 常见误区</h4>
+                <ol>
+                    <li><strong>&ldquo;无糖食品随便吃&rdquo;</strong> &mdash;&mdash; 无糖只是不含蔗糖，碳水化合物照样升糖</li>
+                    <li><strong>&ldquo;胰岛素会上瘾&rdquo;</strong> &mdash;&mdash; 胰岛素不是毒品，该用就用</li>
+                    <li><strong>&ldquo;中药可以根治糖尿病&rdquo;</strong> &mdash;&mdash; 目前无法根治，中药只能辅助</li>
+                    <li><strong>&ldquo;不吃主食血糖就正常&rdquo;</strong> &mdash;&mdash; 会导致酮症酸中毒，极其危险</li>
+                    <li><strong>&ldquo;水果一点不能吃&rdquo;</strong> &mdash;&mdash; 控制量和时机，水果也能吃</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="section" id="sec8">
+            <h2>&#x1F4C5; 八、每日养生作息建议</h2>
+            <div class="table-wrapper">
+                <table class="schedule-table">
+                    <tr><th>时间</th><th>活动</th></tr>
+                    <tr><td>06:30</td><td>起床，测空腹血糖</td></tr>
+                    <tr><td>07:00</td><td>早餐（粗粮+蛋白质+蔬菜）</td></tr>
+                    <tr><td>08:00</td><td>餐后散步30分钟</td></tr>
+                    <tr><td>10:00</td><td>加餐（少量坚果或水果）</td></tr>
+                    <tr><td>12:00</td><td>午餐（均衡搭配，七分饱）</td></tr>
+                    <tr><td>13:00</td><td>午休30分钟</td></tr>
+                    <tr><td>15:30</td><td>下午加餐（酸奶或豆制品）</td></tr>
+                    <tr><td>18:00</td><td>晚餐（清淡少油，早吃少吃）</td></tr>
+                    <tr><td>19:00</td><td>运动40分钟</td></tr>
+                    <tr><td>21:00</td><td>测睡前血糖，泡脚</td></tr>
+                    <tr><td>22:00</td><td>入睡，保证7-8小时睡眠</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="section motto">
+            <h2>&#x1F3AF; 结语</h2>
+            <p>管住嘴 &middot; 迈开腿 &middot; 勤监测 &middot; 好心态</p>
+            <div class="subtitle">糖尿病管理是一场马拉松，不是百米冲刺。<br>科学养生，规律生活，定期复诊，同样可以拥有高质量的长寿人生。</div>
+        </div>
+
+    </div>
+
+    <script>
+        // Active nav highlighting
+        const sections = document.querySelectorAll('.section[id]');
+        const navLinks = document.querySelectorAll('.nav-bar a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                if (window.pageYOffset >= sectionTop) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Smooth scroll
+        document.querySelectorAll('.nav-bar a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
