@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>华容道</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:linear-gradient(135deg,#1a0a2e,#2d1b69,#1a0a2e);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
+h1{color:#ffd700;font-size:2rem;margin-bottom:8px;text-shadow:0 0 20px rgba(255,215,0,.5);letter-spacing:.3em}
+#info{color:#bbb;font-size:.85rem;margin-bottom:12px}
+#info span{color:#ffd700}
+#hint{color:#999;font-size:.75rem;margin-bottom:8px;text-align:center}
+#board{position:relative;background:linear-gradient(145deg,#3a2a1a,#2a1a0a);border:4px solid #8b6914;border-radius:12px;box-shadow:0 0 40px rgba(139,105,20,.3),inset 0 0 30px rgba(0,0,0,.5)}
+#exit{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:25%;height:4px;background:#0f0;border-radius:2px;box-shadow:0 0 15px #0f0}
+.block{position:absolute;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;box-shadow:inset 0 2px 4px rgba(255,255,255,.2),0 4px 8px rgba(0,0,0,.4);cursor:pointer;z-index:1;transition:left .12s ease,top .12s ease}
+.block.dragging{filter:brightness(1.25);box-shadow:0 8px 20px rgba(0,0,0,.6);z-index:100;transition:none}
+.block:hover{filter:brightness(1.15)}
+.caocao{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;font-size:1.4rem;border:2px solid #f5c6cb}
+.v{background:linear-gradient(135deg,#2980b9,#3498db);color:#fff;font-size:.85rem;border:2px solid #85c1e9}
+.h{background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;font-size:.85rem;border:2px solid #a9dfbf}
+.soldier{background:linear-gradient(135deg,#8e44ad,#9b59b6);color:#fff;font-size:.7rem;border:2px solid #d2b4de}
+#controls{margin-top:16px;display:flex;gap:12px}
+#controls button{padding:10px 24px;font-size:.95rem;font-family:inherit;background:linear-gradient(135deg,#8b6914,#a07828);color:#fff;border:1px solid #c8a040;border-radius:8px;cursor:pointer}
+#controls button:hover{transform:scale(1.05)}
+#msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.92);color:#ffd700;font-size:2rem;padding:30px 50px;border-radius:16px;border:2px solid #ffd700;z-index:200;display:none;text-align:center}
+#msg div{font-size:1rem;color:#aaa;margin-top:10px}
+#layoutSel{margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#layoutSel button{padding:6px 16px;font-size:.8rem;background:rgba(139,105,20,.3);color:#ccc;border:1px solid #8b6914;border-radius:6px;cursor:pointer}
+#layoutSel button.active{background:#8b6914;color:#fff}
+</style>
+</head>
+<body>
+<h1>华 容 道</h1>
+<div id="info">步数：<span id="moves">0</span></div>
+<div id="hint">拖动或点击棋子即可移动</div>
+<div id="layoutSel"></div>
+<div id="board"><div id="exit"></div></div>
+<div id="controls">
+<button id="btnReset">重置</button>
+<button id="btnUndo">撤销</button>
+<button id="btnChange">换局</button>
+</div>
+<div id="msg">&#x1F389; 通关成功!<div id="msgSub"></div></div>
+
+<script>
+(function(){
+var COLS=4,ROWS=5,S=0;
+var boardEl,movesEl,msgEl,msgSubEl;
+var moveCount=0,history=[],blocks=[],gameWon=false;
+
+var LAYOUTS=[
+{name:'横刀立马',blocks:[
+{name:'曹操',w:2,h:2,x:1,y:0,cls:'caocao'},{name:'张飞',w:1,h:2,x:0,y:0,cls:'v'},{name:'赵云',w:1,h:2,x:3,y:0,cls:'v'},{name:'马超',w:1,h:2,x:0,y:2,cls:'v'},{name:'关羽',w:2,h:1,x:1,y:2,cls:'h'},{name:'黄忠',w:1,h:2,x:3,y:2,cls:'v'},{name:'兵',w:1,h:1,x:0,y:4,cls:'soldier'},{name:'兵',w:1,h:1,x:1,y:3,cls:'soldier'},{name:'兵',w:1,h:1,x:2,y:3,cls:'soldier'},{name:'兵',w:1,h:1,x:3,y:4,cls:'soldier'}
+]},
+{name:'近在咫尺',blocks:[
+{name:'曹操',w:2,h:2,x:1,y:0,cls:'caocao'},{name:'张飞',w:1,h:2,x:0,y:0,cls:'v'},{name:'赵云',w:1,h:2,x:3,y:0,cls:'v'},{name:'马超',w:2,h:1,x:1,y:2,cls:'h'},{name:'黄忠',w:1,h:2,x:0,y:2,cls:'v'},{name:'关羽',w:1,h:2,x:3,y:2,cls:'v'},{name:'兵',w:1,h:1,x:1,y:3,cls:'soldier'},{name:'兵',w:1,h:1,x:2,y:3,cls:'soldier'},{name:'兵',w:1,h:1,x:1,y:4,cls:'soldier'},{name:'兵',w:1,h:1,x:2,y:4,cls:'soldier'}
+]},
+{name:'兵分三路',blocks:[
+{name:'曹操',w:2,h:2,x:1,y:0,cls:'caocao'},{name:'张飞',w:1,h:2,x:0,y:0,cls:'v'},{name:'赵云',w:1,h:2,x:3,y:0,cls:'v'},{name:'马超',w:2,h:1,x:1,y:2,cls:'h'},{name:'黄忠',w:1,h:2,x:0,y:3,cls:'v'},{name:'关羽',w:1,h:2,x:3,y:3,cls:'v'},{name:'兵',w:1,h:1,x:1,y:3,cls:'soldier'},{name:'兵',w:1,h:1,x:2,y:3,cls:'soldier'},{name:'兵',w:1,h:1,x:1,y:4,cls:'soldier'},{name:'兵',w:1,h:1,x:2,y:4,cls:'soldier'}
+]},
+{name:'峰回路转',blocks:[
+{name:'曹操',w:2,h:2,x:1,y:0,cls:'caocao'},{name:'张飞',w:1,h:2,x:0,y:0,cls:'v'},{name:'赵云',w:1,h:2,x:3,y:0,cls:'v'},{name:'马超',w:2,h:1,x:1,y:2,cls:'h'},{name:'黄忠',w:1,h:2,x:0,y:2,cls:'v'},{name:'关羽',w:2,h:1,x:1,y:3,cls:'h'},{name:'兵',w:1,h:1,x:3,y:2,cls:'soldier'},{name:'兵',w:1,h:1,x:3,y:3,cls:'soldier'},{name:'兵',w:1,h:1,x:0,y:4,cls:'soldier'},{name:'兵',w:1,h:1,x:3,y:4,cls:'soldier'}
+]}
+];
+var layoutIdx=0;
+
+// Drag state - ALL in one place
+var dragBlock=null,dragOX=0,dragOY=0,dragMoved=false;
+
+function getBlockEl(el){while(el&&el!==boardEl){if(el.classList&&el.classList.contains('block'))return el;el=el.parentNode;}return null;}
+function findBlock(el){for(var i=0;i<blocks.length;i++){if(blocks[i].el===el)return blocks[i];}return null;}
+
+// --- ALL event setup happens ONCE here ---
+function setupEvents(){
+// Mouse: mousedown on board, mouseup on document
+boardEl.addEventListener('mousedown',function(e){
+var bel=getBlockEl(e.target);if(!bel||gameWon)return;
+var block=findBlock(bel);if(!block)return;
+e.preventDefault();
+var r=boardEl.getBoundingClientRect();
+dragBlock=block;
+dragOX=e.clientX-r.left-block.x*S-2;
+dragOY=e.clientY-r.top-block.y*S-2;
+dragMoved=false;
+bel.classList.add('dragging');
+bel.classList.remove('snapping');
+});
+
+document.addEventListener('mousemove',function(e){
+if(!dragBlock)return;
+var r=boardEl.getBoundingClientRect();
+var px=e.clientX-r.left-dragOX;
+var py=e.clientY-r.top-dragOY;
+if(Math.abs(px-dragBlock.x*S)>10||Math.abs(py-dragBlock.y*S)>10){
+dragMoved=true;
+dragBlock.el.style.left=px+'px';
+dragBlock.el.style.top=py+'px';
+}
+});
+
+document.addEventListener('mouseup',function(){
+if(!dragBlock)return;
+var block=dragBlock;
+var moved=dragMoved;
+dragBlock=null;dragMoved=false;
+block.el.classList.remove('dragging');
+block.el.classList.add('snapping');
+if(moved){snapToGrid(block);}
+else{autoMove(block);}
+});
+
+// Touch
+boardEl.addEventListener('touchstart',function(e){
+if(gameWon)return;
+var t=e.touches[0];
+var bel=getBlockEl(e.target);if(!bel)return;
+var block=findBlock(bel);if(!block)return;
+e.preventDefault();
+var r=boardEl.getBoundingClientRect();
+dragBlock=block;
+dragOX=t.clientX-r.left-block.x*S-2;
+dragOY=t.clientY-r.top-block.y*S-2;
+dragMoved=false;
+bel.classList.add('dragging');
+},{passive:false});
+
+document.addEventListener('touchmove',function(e){
+if(!dragBlock)return;
+e.preventDefault();
+var t=e.touches[0];
+var r=boardEl.getBoundingClientRect();
+var px=t.clientX-r.left-dragOX;
+var py=t.clientY-r.top-dragOY;
+if(Math.abs(px-dragBlock.x*S)>10||Math.abs(py-dragBlock.y*S)>10){
+dragMoved=true;
+dragBlock.el.style.left=px+'px';
+dragBlock.el.style.top=py+'px';
+}
+},{passive:false});
+
+document.addEventListener('touchend',function(){
+if(!dragBlock)return;
+var block=dragBlock;
+var moved=dragMoved;
+dragBlock=null;dragMoved=false;
+block.el.classList.remove('dragging');
+if(moved){snapToGrid(block);}
+else{autoMove(block);}
+});
+}
+
+function autoMove(block){
+if(gameWon)return;
+var dirs=block.w===2&&block.h===1?['l','r','u','d']:['u','d','l','r'];
+for(var i=0;i<dirs.length;i++){if(tryStep(block,dirs[i]))return;}
+}
+
+function tryStep(block,dir){
+var dx=0,dy=0;
+if(dir==='u')dy=-1;else if(dir==='d')dy=1;else if(dir==='l')dx=-1;else if(dir==='r')dx=1;
+if(!canMove(block,dx,dy)){
+if((block.w===2||block.h===2)&&canMove(block,dx*2,dy*2)){dx*=2;dy*=2;}
+else return false;
+}
+history.push({state:blocks.map(function(b){return{x:b.x,y:b.y}}),moves:moveCount});
+block.x+=dx;block.y+=dy;
+moveCount++;
+movesEl.textContent=moveCount;
+block.el.style.left=block.x*S+2+'px';
+block.el.style.top=block.y*S+2+'px';
+if(block.name==='曹操'&&block.x===1&&block.y===3){
+gameWon=true;
+setTimeout(function(){msgSubEl.textContent='用了 '+moveCount+' 步';msgEl.style.display='block';},200);
+}
+return true;
+}
+
+function snapToGrid(block){
+var el=block.el;
+var curL=parseFloat(el.style.left),curT=parseFloat(el.style.top);
+var gx=Math.round(curL/S),gy=Math.round(curT/S);
+gx=Math.max(0,Math.min(gx,COLS-block.w));
+gy=Math.max(0,Math.min(gy,ROWS-block.h));
+var occ=occupied();
+var canSnap=true;
+for(var dy=0;dy<block.h;dy++)for(var dx=0;dx<block.w;dx++){
+if(occ[(gy+dy)*10+(gx+dx)]&&occ[(gy+dy)*10+(gx+dx)]!==block)canSnap=false;
+}
+if(!canSnap||Math.abs(gx-block.x)+Math.abs(gy-block.y)>1){gx=block.x;gy=block.y;}
+block.x=gx;block.y=gy;
+el.style.left=block.x*S+2+'px';
+el.style.top=block.y*S+2+'px';
+history.push({state:blocks.map(function(b){return{x:b.x,y:b.y}}),moves:moveCount});
+moveCount++;
+movesEl.textContent=moveCount;
+if(block.name==='曹操'&&block.x===1&&block.y===3){
+gameWon=true;
+setTimeout(function(){msgSubEl.textContent='用了 '+moveCount+' 步';msgEl.style.display='block';},200);
+}
+}
+
+function gridCells(block){var g=[];for(var dy=0;dy<block.h;dy++)for(var dx=0;dx<block.w;dx++)g.push((block.y+dy)*10+(block.x+dx));return g;}
+function occupied(){var s={};for(var i=0;i<blocks.length;i++){var b=blocks[i];for(var dy=0;dy<b.h;dy++)for(var dx=0;dx<b.w;dx++)s[(b.y+dy)*10+(b.x+dx)]=b;}return s;}
+function canMove(block,dx,dy){var occ=occupied(),cells=gridCells(block);for(var i=0;i<cells.length;i++){var r=Math.floor(cells[i]/10),c=cells[i]%10;var nr=r+dy,nc=c+dx;if(nr<0||nr>=ROWS||nc<0||nc>=COLS)return false;var key=nr*10+nc;if(occ[key]&&occ[key]!==block)return false;}return true;}
+
+function undoMove(){
+if(history.length===0||gameWon)return;
+var st=history.pop();
+for(var i=0;i<blocks.length;i++){blocks[i].x=st.state[i].x;blocks[i].y=st.state[i].y;blocks[i].el.style.left=blocks[i].x*S+2+'px';blocks[i].el.style.top=blocks[i].y*S+2+'px';}
+moveCount=st.moves;movesEl.textContent=moveCount;
+}
+
+window.resetGame=function(){initGame();};
+window.undoMove=function(){undoMove();};
+window.changeLayout=function(){layoutIdx=(layoutIdx+1)%LAYOUTS.length;initGame();};
+
+function calcSize(){var mw=Math.min(window.innerWidth-24,500),mh=window.innerHeight-280;S=Math.floor(Math.min(mw/COLS,mh/ROWS));if(S<55)S=55;}
+
+function buildLayoutSel(){
+var el=document.getElementById('layoutSel');el.innerHTML='';
+for(var i=0;i<LAYOUTS.length;i++){var b=document.createElement('button');b.textContent=LAYOUTS[i].name;if(i===layoutIdx)b.className='active';(function(idx){b.onclick=function(){layoutIdx=idx;initGame();};})(i);el.appendChild(b);}
+}
+
+function initGame(){
+calcSize();
+boardEl.style.width=COLS*S+'px';boardEl.style.height=ROWS*S+'px';
+document.getElementById('exit').style.width=S+'px';
+var lay=LAYOUTS[layoutIdx];
+blocks=[];moveCount=0;history=[];gameWon=false;
+movesEl.textContent='0';msgEl.style.display='none';
+var old=boardEl.querySelectorAll('.block');for(var i=0;i<old.length;i++)old[i].remove();
+for(var i=0;i<lay.blocks.length;i++){var b=lay.blocks[i];blocks.push({name:b.name,w:b.w,h:b.h,x:b.x,y:b.y,cls:b.cls,el:null});}
+for(var i=0;i<blocks.length;i++){
+var b=blocks[i];var el=document.createElement('div');
+el.className='block '+b.cls;
+el.style.width=b.w*S-4+'px';el.style.height=b.h*S-4+'px';
+el.style.left=b.x*S+2+'px';el.style.top=b.y*S+2+'px';
+if(b.cls==='caocao'){el.textContent='曹操';}
+else{el.textContent=b.cls==='soldier'?'兵':b.name;}
+boardEl.appendChild(el);b.el=el;
+}
+buildLayoutSel();
+}
+
+if(document.readyState==='loading'){
+document.addEventListener('DOMContentLoaded',function(){
+boardEl=document.getElementById('board');movesEl=document.getElementById('moves');msgEl=document.getElementById('msg');msgSubEl=document.getElementById('msgSub');
+setupEvents();initGame();
+});
+} else {
+boardEl=document.getElementById('board');movesEl=document.getElementById('moves');msgEl=document.getElementById('msg');msgSubEl=document.getElementById('msgSub');
+setupEvents();initGame();
+}
+})();
+</script>
+</body>
+</html>
