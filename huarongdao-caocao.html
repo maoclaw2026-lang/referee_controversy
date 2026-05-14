@@ -148,6 +148,11 @@ block.el.classList.remove('dragging');
 if(moved){snapToGrid(block);}
 else{autoMove(block);}
 });
+
+// Button handlers
+document.getElementById('btnReset').onclick=function(){initGame();};
+document.getElementById('btnUndo').onclick=function(){undoMove();};
+document.getElementById('btnChange').onclick=function(){layoutIdx=(layoutIdx+1)%LAYOUTS.length;initGame();};
 }
 
 function autoMove(block){
