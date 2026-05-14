@@ -12,8 +12,10 @@ h1{color:#ffd700;font-size:2rem;margin-bottom:8px;text-shadow:0 0 20px rgba(255,
 #info span{color:#ffd700}
 #board{position:relative;background:linear-gradient(145deg,#3a2a1a,#2a1a0a);border:4px solid #8b6914;border-radius:12px;box-shadow:0 0 40px rgba(139,105,20,.3),inset 0 0 30px rgba(0,0,0,.5)}
 #exit{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:25%;height:4px;background:#0f0;border-radius:2px;box-shadow:0 0 15px #0f0}
-.block{position:absolute;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;box-shadow:inset 0 2px 4px rgba(255,255,255,.2),0 4px 8px rgba(0,0,0,.4);transition:left .12s ease,top .12s ease;cursor:pointer}
+.block{position:absolute;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;box-shadow:inset 0 2px 4px rgba(255,255,255,.2),0 4px 8px rgba(0,0,0,.4);cursor:pointer;z-index:1}
+.block.snapping{transition:left .12s ease,top .12s ease}
 .block:hover{filter:brightness(1.15)}
+.block.dragging{filter:brightness(1.25);box-shadow:0 8px 20px rgba(0,0,0,.6);z-index:100}
 .caocao{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;font-size:1.4rem;border:2px solid #f5c6cb}
 .v{background:linear-gradient(135deg,#2980b9,#3498db);color:#fff;font-size:.85rem;border:2px solid #85c1e9}
 .h{background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;font-size:.85rem;border:2px solid #a9dfbf}
@@ -21,20 +23,19 @@ h1{color:#ffd700;font-size:2rem;margin-bottom:8px;text-shadow:0 0 20px rgba(255,
 #controls{margin-top:16px;display:flex;gap:12px}
 #controls button{padding:10px 24px;font-size:.95rem;font-family:inherit;background:linear-gradient(135deg,#8b6914,#a07828);color:#fff;border:1px solid #c8a040;border-radius:8px;cursor:pointer}
 #controls button:hover{transform:scale(1.05)}
-#msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.92);color:#ffd700;font-size:2rem;padding:30px 50px;border-radius:16px;border:2px solid #ffd700;z-index:100;display:none;text-align:center}
+#msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.92);color:#ffd700;font-size:2rem;padding:30px 50px;border-radius:16px;border:2px solid #ffd700;z-index:200;display:none;text-align:center}
 #msg div{font-size:1rem;color:#aaa;margin-top:10px}
 #layoutSel{margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 #layoutSel button{padding:6px 16px;font-size:.8rem;background:rgba(139,105,20,.3);color:#ccc;border:1px solid #8b6914;border-radius:6px;cursor:pointer}
 #layoutSel button.active{background:#8b6914;color:#fff}
-#hint{color:#999;font-size:.75rem;margin-top:8px}
 </style>
 </head>
 <body>
 <h1>华 容 道</h1>
 <div id="info">步数：<span id="moves">0</span></div>
+<div id="hint" style="color:#999;font-size:.75rem;margin-bottom:8px;text-align:center">拖动棋子移动，点击自动走</div>
 <div id="layoutSel"></div>
 <div id="board"><div id="exit"></div></div>
-<div id="hint">点击棋子即可移动</div>
 <div id="controls">
 <button onclick="resetGame()">重置</button>
 <button onclick="undoMove()">撤销</button>
@@ -100,10 +101,59 @@ var LAYOUTS=[
 ];
 var layoutIdx=0;
 
-function handleClick(block){
+// Drag state
+var dragBlock=null,dragOX=0,dragOY=0,dragMoved=false;
+
+function onPointerDown(cx,cy,el){
 if(gameWon)return;
-var dirs=['u','d','l','r'];
+var bel=getBlockEl(el);
+if(!bel)return;
+var block=null;
+for(var i=0;i<blocks.length;i++){if(blocks[i].el===bel){block=blocks[i];break;}}
+if(!block)return;
+var r=boardEl.getBoundingClientRect();
+dragBlock=block;
+dragOX=cx-r.left-block.x*S-2;
+dragOY=cy-r.top-block.y*S-2;
+dragMoved=false;
+bel.classList.add('dragging');
+bel.classList.remove('snapping');
+}
+
+function onPointerMove(cx,cy){
+if(!dragBlock)return;
+var r=boardEl.getBoundingClientRect();
+var px=cx-r.left-dragOX;
+var py=cy-r.top-dragOY;
+if(Math.abs(px-blockX(dragBlock)*S)>10||Math.abs(py-blockY(dragBlock)*S)>10){
+dragMoved=true;
+dragBlock.el.style.left=px+'px';
+dragBlock.el.style.top=py+'px';
+}
+}
+
+function blockX(b){return b.x;}
+function blockY(b){return b.y;}
+
+function onPointerUp(){
+if(!dragBlock)return;
+var block=dragBlock;
+var moved=dragMoved;
+dragBlock=null;dragMoved=false;
+block.el.classList.remove('dragging');
+block.el.classList.add('snapping');
+if(moved){
+snapToGrid(block);
+}else{
+autoMove(block);
+}
+}
+
+function autoMove(block){
+if(gameWon)return;
+var dirs;
 if(block.w===2&&block.h===1)dirs=['l','r','u','d'];
+else dirs=['u','d','l','r'];
 for(var i=0;i<dirs.length;i++){if(tryStep(block,dirs[i]))return;}
 }
 
@@ -127,6 +177,39 @@ setTimeout(function(){msgSubEl.textContent='用了 '+moveCount+' 步';msgEl.styl
 return true;
 }
 
+function snapToGrid(block){
+var el=block.el;
+var curL=parseFloat(el.style.left);
+var curT=parseFloat(el.style.top);
+var gx=Math.round(curL/S);
+var gy=Math.round(curT/S);
+// Clamp
+gx=Math.max(0,Math.min(gx,COLS-block.w));
+gy=Math.max(0,Math.min(gy,ROWS-block.h));
+// Check if snap position is occupied by another block
+var occ=occupied();
+var canSnap=true;
+for(var dy=0;dy<block.h;dy++)for(var dx=0;dx<block.w;dx++){
+if(occ[(gy+dy)*10+(gx+dx)]&&occ[(gy+dy)*10+(gx+dx)]!==block)canSnap=false;
+}
+if(!canSnap||Math.abs(gx-block.x)+Math.abs(gy-block.y)>1){
+// Snap back to original position
+gx=block.x;gy=block.y;
+}
+block.x=gx;block.y=gy;
+el.style.left=block.x*S+2+'px';
+el.style.top=block.y*S+2+'px';
+// Record move
+history.push({state:blocks.map(function(b){return{x:b.x,y:b.y}}),moves:moveCount});
+moveCount++;
+movesEl.textContent=moveCount;
+// Check win
+if(block.name==='曹操'&&block.x===1&&block.y===3){
+gameWon=true;
+setTimeout(function(){msgSubEl.textContent='用了 '+moveCount+' 步';msgEl.style.display='block';},200);
+}
+}
+
 function gridCells(block){
 var g=[];
 for(var dy=0;dy<block.h;dy++)for(var dx=0;dx<block.w;dx++)g.push((block.y+dy)*10+(block.x+dx));
@@ -140,19 +223,6 @@ var b=blocks[i];
 for(var dy=0;dy<b.h;dy++)for(var dx=0;dx<b.w;dx++)s[(b.y+dy)*10+(b.x+dx)]=b;
 }
 return s;
-}
-
-function canMove(block,dx,dy){
-var occ=occupied();
-var cells=gridCells(block);
-for(var i=0;i<cells.length;i++){
-var r=Math.floor(cells[i]/10),c=cells[i]%10;
-var nr=r+dy,nc=c+dx;
-if(nr<0||nr>=ROWS||nc<0||nc>=COLS)return false;
-var key=nr*10+nc;
-if(occ[key]&&occ[key]!==block)return false;
-}
-return true;
 }
 
 function undoMove(){
@@ -191,6 +261,11 @@ el.appendChild(b);
 }
 }
 
+function getBlockEl(el){
+while(el&&el!==boardEl){if(el.classList&&el.classList.contains('block'))return el;el=el.parentNode;}
+return null;
+}
+
 function initGame(){
 calcSize();
 boardEl.style.width=COLS*S+'px';
@@ -217,16 +292,23 @@ el.style.top=b.y*S+2+'px';
 el.textContent=b.cls==='soldier'?'兵':b.name;
 
 (function(block){
-el.addEventListener('click',function(){handleClick(block);});
+el.addEventListener('mousedown',function(e){e.preventDefault();onPointerDown(e.clientX,e.clientY,e.target);});
+el.addEventListener('touchstart',function(e){e.preventDefault();var t=e.touches[0];onPointerDown(t.clientX,t.clientY,e.target);},{passive:false});
 })(b);
 
 boardEl.appendChild(el);
 b.el=el;
 }
+
+// Global move/up handlers
+document.addEventListener('mousemove',function(e){onPointerMove(e.clientX,e.clientY);});
+document.addEventListener('mouseup',function(){onPointerUp();});
+document.addEventListener('touchmove',function(e){if(!dragBlock)return;e.preventDefault();var t=e.touches[0];onPointerMove(t.clientX,t.clientY);},{passive:false});
+document.addEventListener('touchend',function(){onPointerUp();});
+
 buildLayoutSel();
 }
 
-// Init on DOM ready
 if(document.readyState==='loading'){
 document.addEventListener('DOMContentLoaded',function(){
 boardEl=document.getElementById('board');
