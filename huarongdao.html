@@ -236,7 +236,7 @@ var b=blocks[i];var el=document.createElement('div');
 el.className='block '+b.cls;
 el.style.width=b.w*S-4+'px';el.style.height=b.h*S-4+'px';
 el.style.left=b.x*S+2+'px';el.style.top=b.y*S+2+'px';
-if(b.cls==='caocao'){el.style.backgroundImage="url('wuhao.jpg')";el.textContent='';}
+if(b.cls==='caocao'){el.style.backgroundImage="url('%E5%90%B4%E6%B5%A9%E7%85%A7%E7%89%87.jpg')";el.textContent='';}
 else{el.textContent=b.cls==='soldier'?'兵':b.name;}
 boardEl.appendChild(el);b.el=el;
 }
