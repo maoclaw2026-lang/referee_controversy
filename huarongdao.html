@@ -7,25 +7,26 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{background:linear-gradient(135deg,#1a0a2e,#2d1b69,#1a0a2e);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
-h1{color:#ffd700;font-size:2.2rem;margin-bottom:8px;text-shadow:0 0 20px rgba(255,215,0,.5);letter-spacing:.3em}
+h1{color:#ffd700;font-size:2rem;margin-bottom:8px;text-shadow:0 0 20px rgba(255,215,0,.5);letter-spacing:.3em}
 #info{color:#bbb;font-size:.85rem;margin-bottom:12px}
 #info span{color:#ffd700}
 #board{position:relative;background:linear-gradient(145deg,#3a2a1a,#2a1a0a);border:4px solid #8b6914;border-radius:12px;box-shadow:0 0 40px rgba(139,105,20,.3),inset 0 0 30px rgba(0,0,0,.5)}
 #exit{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:25%;height:4px;background:#0f0;border-radius:2px;box-shadow:0 0 15px #0f0}
-.block{position:absolute;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;cursor:pointer;transition:left .15s ease,top .15s ease;box-shadow:inset 0 2px 4px rgba(255,255,255,.2),0 4px 8px rgba(0,0,0,.4);z-index:1}
-.block:active{filter:brightness(1.2)}
-.caocao{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;font-size:1.6rem;border:2px solid #f5c6cb}
-.v{background:linear-gradient(135deg,#2980b9,#3498db);color:#fff;font-size:.9rem;border:2px solid #85c1e9}
-.h{background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;font-size:.9rem;border:2px solid #a9dfbf}
-.soldier{background:linear-gradient(135deg,#8e44ad,#9b59b6);color:#fff;font-size:.75rem;border:2px solid #d2b4de}
+.block{position:absolute;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;box-shadow:inset 0 2px 4px rgba(255,255,255,.2),0 4px 8px rgba(0,0,0,.4);transition:left .12s ease,top .12s ease;cursor:pointer}
+.block:hover{filter:brightness(1.15)}
+.caocao{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;font-size:1.4rem;border:2px solid #f5c6cb}
+.v{background:linear-gradient(135deg,#2980b9,#3498db);color:#fff;font-size:.85rem;border:2px solid #85c1e9}
+.h{background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;font-size:.85rem;border:2px solid #a9dfbf}
+.soldier{background:linear-gradient(135deg,#8e44ad,#9b59b6);color:#fff;font-size:.7rem;border:2px solid #d2b4de}
 #controls{margin-top:16px;display:flex;gap:12px}
-#controls button{padding:10px 28px;font-size:1rem;font-family:inherit;background:linear-gradient(135deg,#8b6914,#a07828);color:#fff;border:1px solid #c8a040;border-radius:8px;cursor:pointer;transition:transform .1s}
+#controls button{padding:10px 24px;font-size:.95rem;font-family:inherit;background:linear-gradient(135deg,#8b6914,#a07828);color:#fff;border:1px solid #c8a040;border-radius:8px;cursor:pointer}
 #controls button:hover{transform:scale(1.05)}
 #msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.92);color:#ffd700;font-size:2rem;padding:30px 50px;border-radius:16px;border:2px solid #ffd700;z-index:100;display:none;text-align:center}
 #msg div{font-size:1rem;color:#aaa;margin-top:10px}
 #layoutSel{margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 #layoutSel button{padding:6px 16px;font-size:.8rem;background:rgba(139,105,20,.3);color:#ccc;border:1px solid #8b6914;border-radius:6px;cursor:pointer}
 #layoutSel button.active{background:#8b6914;color:#fff}
+#hint{color:#999;font-size:.75rem;margin-top:8px}
 </style>
 </head>
 <body>
@@ -33,6 +34,7 @@ h1{color:#ffd700;font-size:2.2rem;margin-bottom:8px;text-shadow:0 0 20px rgba(25
 <div id="info">步数：<span id="moves">0</span></div>
 <div id="layoutSel"></div>
 <div id="board"><div id="exit"></div></div>
+<div id="hint">点击棋子即可移动</div>
 <div id="controls">
 <button onclick="resetGame()">重置</button>
 <button onclick="undoMove()">撤销</button>
@@ -41,14 +43,11 @@ h1{color:#ffd700;font-size:2.2rem;margin-bottom:8px;text-shadow:0 0 20px rgba(25
 <div id="msg">&#x1F389; 通关成功!<div id="msgSub"></div></div>
 
 <script>
+(function(){
 var COLS=4,ROWS=5,S=0;
-var boardEl=document.getElementById('board');
-var movesEl=document.getElementById('moves');
-var msgEl=document.getElementById('msg');
-var msgSubEl=document.getElementById('msgSub');
+var boardEl,movesEl,msgEl,msgSubEl;
 var moveCount=0,history=[],blocks=[],gameWon=false;
 
-// Layouts
 var LAYOUTS=[
 {name:'横刀立马',blocks:[
 {name:'曹操',w:2,h:2,x:1,y:0,cls:'caocao'},
@@ -101,80 +100,11 @@ var LAYOUTS=[
 ];
 var layoutIdx=0;
 
-// --- Input ---
-var dragBlock=null,dragSX=0,dragSY=0,dragging=false,dragDir=null;
-
-function getBlockEl(el){
-while(el&&el!==boardEl){if(el.classList&&el.classList.contains('block'))return el;el=el.parentNode;}
-return null;
-}
-
-function onPointerDown(cx,cy,el){
+function handleClick(block){
 if(gameWon)return;
-var bel=getBlockEl(el);
-if(!bel)return;
-// Find block data
-var block=null;
-for(var i=0;i<blocks.length;i++){if(blocks[i].el===bel){block=blocks[i];break;}}
-if(!block)return;
-dragBlock=block;dragSX=cx;dragSY=cy;dragging=true;dragDir=null;
-}
-
-function onPointerMove(cx,cy){
-if(!dragging)return;
-var dx=cx-dragSX,dy=cy-dragSY;
-if(!dragDir&&Math.abs(dx)+Math.abs(dy)>10){
-dragDir=Math.abs(dx)>Math.abs(dy)?(dx>0?'r':'l'):(dy>0?'d':'u');
-}
-}
-
-function onPointerUp(){
-if(!dragging)return;
-dragging=false;
-var b=dragBlock;
-dragBlock=null;
-doMove(b,dragDir);
-dragDir=null;
-}
-
-// Mouse - direct on board element
-boardEl.addEventListener('mousedown',function(e){
-e.preventDefault();
-onPointerDown(e.clientX,e.clientY,e.target);
-});
-document.addEventListener('mousemove',function(e){onPointerMove(e.clientX,e.clientY);});
-document.addEventListener('mouseup',function(){onPointerUp();});
-
-// Touch
-boardEl.addEventListener('touchstart',function(e){
-var t=e.touches[0];
-onPointerDown(t.clientX,t.clientY,e.target);
-},{passive:true});
-document.addEventListener('touchmove',function(e){
-if(!dragging)return;
-var t=e.touches[0];
-onPointerMove(t.clientX,t.clientY);
-},{passive:true});
-document.addEventListener('touchend',function(){onPointerUp();});
-
-// --- Movement ---
-function doMove(block,dir){
-var prefs;
-if(block.w===2&&block.h===2){
-prefs=['u','d','l','r'];
-}else if(block.h===2){
-if(dir==='u'||dir==='d')prefs=[dir,dir==='u'?'d':'u','l','r'];
-else prefs=['u','d','l','r'];
-}else if(block.w===2){
-if(dir==='l'||dir==='r')prefs=[dir,dir==='l'?'r':'l','u','d'];
-else prefs=['l','r','u','d'];
-}else{
-if(dir){var opp={u:'d',d:'u',l:'r',r:'l'};prefs=[dir,opp[dir]];}
-else prefs=['u','d','l','r'];
-}
-var seen={},unique=[];
-for(var i=0;i<prefs.length;i++){if(!seen[prefs[i]]){seen[prefs[i]]=1;unique.push(prefs[i]);}}
-for(var i=0;i<unique.length;i++){if(tryStep(block,unique[i]))return;}
+var dirs=['u','d','l','r'];
+if(block.w===2&&block.h===1)dirs=['l','r','u','d'];
+for(var i=0;i<dirs.length;i++){if(tryStep(block,dirs[i]))return;}
 }
 
 function tryStep(block,dir){
@@ -238,15 +168,15 @@ moveCount=st.moves;
 movesEl.textContent=moveCount;
 }
 
-function resetGame(){initGame();}
-function changeLayout(){layoutIdx=(layoutIdx+1)%LAYOUTS.length;initGame();}
+window.resetGame=function(){initGame();};
+window.undoMove=function(){undoMove();};
+window.changeLayout=function(){layoutIdx=(layoutIdx+1)%LAYOUTS.length;initGame();};
 
-// --- Init ---
 function calcSize(){
 var mw=Math.min(window.innerWidth-24,500);
-var mh=window.innerHeight-260;
+var mh=window.innerHeight-280;
 S=Math.floor(Math.min(mw/COLS,mh/ROWS));
-if(S<60)S=60;
+if(S<55)S=55;
 }
 
 function buildLayoutSel(){
@@ -285,13 +215,34 @@ el.style.height=b.h*S-4+'px';
 el.style.left=b.x*S+2+'px';
 el.style.top=b.y*S+2+'px';
 el.textContent=b.cls==='soldier'?'兵':b.name;
+
+(function(block){
+el.addEventListener('click',function(){handleClick(block);});
+})(b);
+
 boardEl.appendChild(el);
 b.el=el;
 }
 buildLayoutSel();
 }
 
+// Init on DOM ready
+if(document.readyState==='loading'){
+document.addEventListener('DOMContentLoaded',function(){
+boardEl=document.getElementById('board');
+movesEl=document.getElementById('moves');
+msgEl=document.getElementById('msg');
+msgSubEl=document.getElementById('msgSub');
 initGame();
+});
+} else {
+boardEl=document.getElementById('board');
+movesEl=document.getElementById('moves');
+msgEl=document.getElementById('msg');
+msgSubEl=document.getElementById('msgSub');
+initGame();
+}
+})();
 </script>
 </body>
 </html>
